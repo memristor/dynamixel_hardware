@@ -91,6 +91,9 @@ private:
 
   return_type reset_command();
 
+  void read1(const rclcpp::Time & time, const rclcpp::Duration & period);
+  void read2(const rclcpp::Time & time, const rclcpp::Duration & period);
+
   DynamixelWorkbench dynamixel_workbench_;
   std::map<const char * const, const ControlItem *> control_items_;
   std::vector<Joint> joints_;

@@ -245,6 +245,16 @@ return_type DynamixelHardware::read(const rclcpp::Time & /* time */, const rclcp
     return return_type::OK;
   }
 
+  dynamixel_workbench_.getProtocolVersion() > 1.5
+    ? read2(rclcpp::Time{}, rclcpp::Duration(0, 0))
+    : read1(rclcpp::Time{}, rclcpp::Duration(0, 0));
+
+  return return_type::OK;
+}
+
+void DynamixelHardware::read2(const rclcpp::Time & /* time */, const rclcpp::Duration & /* period */)
+/* Read function for protocol 2.0 */
+{
   std::vector<uint8_t> ids(info_.joints.size(), 0);
   std::vector<int32_t> positions(info_.joints.size(), 0);
   std::vector<int32_t> velocities(info_.joints.size(), 0);
@@ -284,8 +294,37 @@ return_type DynamixelHardware::read(const rclcpp::Time & /* time */, const rclcp
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]);
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);
   }
+}
 
-  return return_type::OK;
+void DynamixelHardware::read1(const rclcpp::Time & /* time */, const rclcpp::Duration & /* period */)
+/* Read function for protocol 1.0 */
+{
+  std::vector<uint8_t> ids(info_.joints.size(), 0);
+  std::vector<int32_t> positions(info_.joints.size(), 0);
+  std::vector<int32_t> velocities(info_.joints.size(), 0);
+  std::vector<int32_t> currents(info_.joints.size(), 0);
+
+  std::copy(joint_ids_.begin(), joint_ids_.end(), ids.begin());
+  const char * log = nullptr;
+
+  for (uint i = 0; i < ids.size(); i++) {
+    // https://emanual.robotis.com/docs/en/dxl/ax/ax-12a/
+    // ax12 present position address: 36
+    // ax12 present speed address: 38
+    // ax12 present load address: 40
+
+    unsigned int data[6];
+    if (!dynamixel_workbench_.readRegister(ids[i], 36, 6, data, &log))
+      RCLCPP_ERROR(rclcpp::get_logger(kDynamixelHardware), "read0: %s", log);
+
+    int position = data[0] + data[1] * 256;
+    int speed = data[2] + data[3] * 256;
+    int load = data[4] + data[5] * 256;
+
+    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], position);
+    joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], speed);
+    joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(load);
+  }
 }
 
 return_type DynamixelHardware::write(const rclcpp::Time & /* time */, const rclcpp::Duration & /* period */)
