@@ -346,7 +346,8 @@ return_type DynamixelHardware::write(const rclcpp::Time & /* time */, const rclc
   if (std::any_of(
         joints_.cbegin(), joints_.cend(), [](auto j) { return j.command.velocity != 0.0; })) {
     // Velocity control
-    set_control_mode(ControlMode::Velocity);
+    // TODO: Add VelocityPosition mode
+    // set_control_mode(ControlMode::Velocity);
     for (uint i = 0; i < ids.size(); i++) {
       commands[i] = dynamixel_workbench_.convertVelocity2Value(
         ids[i], static_cast<float>(joints_[i].command.velocity));
@@ -355,7 +356,8 @@ return_type DynamixelHardware::write(const rclcpp::Time & /* time */, const rclc
           kGoalVelocityIndex, ids.data(), ids.size(), commands.data(), 1, &log)) {
       RCLCPP_ERROR(rclcpp::get_logger(kDynamixelHardware), "%s", log);
     }
-    return return_type::OK;
+    // TODO: Add VelocityPosition mode
+    // return return_type::OK;
   } else if (std::any_of(
                joints_.cbegin(), joints_.cend(), [](auto j) { return j.command.effort != 0.0; })) {
     // Effort control
