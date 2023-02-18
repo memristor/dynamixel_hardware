@@ -80,6 +80,8 @@ CallbackReturn DynamixelHardware::on_init(const hardware_interface::HardwareInfo
 
   auto usb_port = info_.hardware_parameters.at("usb_port");
   auto baud_rate = std::stoi(info_.hardware_parameters.at("baud_rate"));
+  if (info_.hardware_parameters.find("offset") != info_.hardware_parameters.end())
+    offset_ = std::stof(info_.hardware_parameters.at("offset"));
   const char * log = nullptr;
 
   RCLCPP_INFO(rclcpp::get_logger(kDynamixelHardware), "usb_port: %s", usb_port.c_str());
@@ -290,7 +292,7 @@ void DynamixelHardware::read2(const rclcpp::Time & /* time */, const rclcpp::Dur
   }
 
   for (uint i = 0; i < ids.size(); i++) {
-    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]);
+    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], positions[i]) + offset_;
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], velocities[i]);
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(currents[i]);
   }
@@ -321,7 +323,7 @@ void DynamixelHardware::read1(const rclcpp::Time & /* time */, const rclcpp::Dur
     int speed = data[2] + data[3] * 256;
     int load = data[4] + data[5] * 256;
 
-    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], position);
+    joints_[i].state.position = dynamixel_workbench_.convertValue2Radian(ids[i], position) + offset_;
     joints_[i].state.velocity = dynamixel_workbench_.convertValue2Velocity(ids[i], speed);
     joints_[i].state.effort = dynamixel_workbench_.convertValue2Current(load);
   }
@@ -369,7 +371,7 @@ return_type DynamixelHardware::write(const rclcpp::Time & /* time */, const rclc
   set_control_mode(ControlMode::Position);
   for (uint i = 0; i < ids.size(); i++) {
     commands[i] = dynamixel_workbench_.convertRadian2Value(
-      ids[i], static_cast<float>(joints_[i].command.position));
+      ids[i], static_cast<float>(joints_[i].command.position) - offset_);
   }
   if (!dynamixel_workbench_.syncWrite(
         kGoalPositionIndex, ids.data(), ids.size(), commands.data(), 1, &log)) {
